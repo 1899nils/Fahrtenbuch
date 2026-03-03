@@ -1,73 +1,49 @@
-# React + TypeScript + Vite
+# Fahrtenbuch GPS Tracker
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Eine moderne, leichtgewichtige Progressive Web App (PWA) zur Aufzeichnung von Fahrten mittels GPS. Die Daten werden sowohl lokal im Browser als auch persistent auf einem Server (oder im Docker-Container) gespeichert.
 
-Currently, two official plugins are available:
+## Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- **Echtzeit-Tracking:** Erfassung der gefahrenen Kilometer via GPS (Geolocation API).
+- **Persistenz:** Speicherung der Fahrten in einer `trips.json` Datei auf dem Server/Container.
+- **PWA-Support:** Kann auf dem Smartphone als App installiert werden.
+- **Kategorisierung:** Unterscheidung zwischen Dienstfahrten und Privatfahrten.
+- **CSV-Export:** Export der Fahrtenliste für die Buchhaltung.
+- **Modernes UI:** Glassmorphism-Design mit responsivem Layout.
 
-## React Compiler
+## Quick Start mit Docker
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Am einfachsten lässt sich die App mit Docker Compose starten:
 
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
-
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
-
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+docker-compose up --build
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Die App ist anschließend unter **http://localhost:8080** erreichbar.
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+## Datenhaltung (Persistenz)
 
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
-```
+Die App nutzt ein Docker-Volume, um die Daten dauerhaft zu speichern. Im Projektverzeichnis wird automatisch ein Ordner `fahrten-data/` erstellt. Dieser ist mit dem Verzeichnis `/data` im Container verknüpft.
+
+- **Datei-Pfad:** `./fahrten-data/trips.json`
+
+## Wichtiger Hinweis zu GPS (HTTPS)
+
+Die **Geolocation-API** (Standortbestimmung) wird von modernen Browsern aus Sicherheitsgründen **nur über HTTPS** oder `localhost` bereitgestellt. 
+
+Wenn die App auf einem externen Server gehostet wird, muss zwingend ein SSL-Zertifikat (z.B. via Reverse Proxy wie Traefik oder Nginx mit Let's Encrypt) verwendet werden, da die Standortabfrage sonst fehlschlägt.
+
+## Tech Stack
+
+- **Frontend:** React 19, TypeScript, Vite
+- **Backend:** Node.js, Express (für die Datei-API)
+- **Deployment:** Docker, Multi-stage Builds
+- **Styling:** Vanilla CSS (Modern CSS variables)
+
+## Entwicklung
+
+Lokal ohne Docker starten:
+
+1. Abhängigkeiten installieren: `npm install`
+2. Frontend im Dev-Modus: `npm run dev`
+3. Backend starten: `node server.js` (vorher `npm run build` ausführen, damit der `dist` Ordner existiert)
