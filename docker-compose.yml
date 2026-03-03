@@ -1,8 +1,73 @@
 services:
+  # 1. Backend & Frontend (Node.js)
   app:
     build: .
-    ports:
-      - "8080:3000"
-    volumes:
-      - ./fahrten-data:/data
+    container_name: fahrtenbuch-app
     restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgres://user:password@db:5432/fahrtenbuch
+      - PORT=3000
+    networks:
+      - internal-net
+      - proxy-net
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # 2. Database (PostgreSQL)
+  db:
+    image: postgres:16-alpine
+    container_name: fahrtenbuch-db
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=user
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=fahrtenbuch
+    volumes:
+      - db-data:/var/lib/postgresql/data
+    networks:
+      - internal-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U user -d fahrtenbuch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. Reverse Proxy (Nginx Proxy Manager)
+  npm:
+    image: 'jc21/nginx-proxy-manager:latest'
+    container_name: fahrtenbuch-proxy
+    restart: unless-stopped
+    ports:
+      - '80:80'   # HTTP
+      - '81:81'   # Admin UI
+      - '443:443' # HTTPS
+    volumes:
+      - npm-data:/data
+      - npm-letsencrypt:/etc/letsencrypt
+    networks:
+      - proxy-net
+
+  # 4. Static Maps (MapLibre Tile Server)
+  # Dieser Container serviert lokale Karten-Kacheln (selbstgehostet)
+  tileserver:
+    image: maptiler/tileserver-gl
+    container_name: fahrtenbuch-tiles
+    restart: unless-stopped
+    volumes:
+      - ./maps:/data
+    networks:
+      - internal-net
+      - proxy-net
+    # Hinweis: Hier muss eine .mbtiles Datei im /maps Ordner liegen
+
+networks:
+  internal-net:
+    driver: bridge
+  proxy-net:
+    driver: bridge
+
+volumes:
+  db-data:
+  npm-data:
+  npm-letsencrypt:
