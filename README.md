@@ -21,6 +21,21 @@ docker-compose up --build
 
 Die App ist anschließend unter **http://localhost:8080** erreichbar.
 
+## Docker Konfiguration
+
+Damit der Container einwandfrei funktioniert, sollten folgende Punkte beachtet bzw. hinterlegt werden:
+
+1.  **Ports:**
+    *   Der interne Node.js-Server läuft auf Port **3000**.
+    *   In der `docker-compose.yml` ist standardmäßig ein Mapping auf Port **8080** (Host) gesetzt.
+2.  **Volumes (Persistenz):**
+    *   Das Verzeichnis `/data` im Container **muss** auf ein lokales Verzeichnis oder ein Docker-Volume gemappt werden, damit die Fahrten (`trips.json`) beim Neustart des Containers nicht verloren gehen.
+    *   Beispiel: `- ./fahrten-data:/data`
+3.  **Netzwerk & Sicherheit (Wichtig):**
+    *   Für den produktiven Einsatz muss ein **Reverse Proxy (z.B. Nginx, Traefik)** vorgeschaltet werden, der **HTTPS** bereitstellt. Ohne HTTPS wird der Browser den Zugriff auf das GPS (Geolocation API) verweigern.
+4.  **Dateiberechtigungen:**
+    *   Der Container muss Schreibrechte auf das gemappte `/data` Verzeichnis haben, um die `trips.json` erstellen und aktualisieren zu können.
+
 ## Datenhaltung (Persistenz)
 
 Die App nutzt ein Docker-Volume, um die Daten dauerhaft zu speichern. Im Projektverzeichnis wird automatisch ein Ordner `fahrten-data/` erstellt. Dieser ist mit dem Verzeichnis `/data` im Container verknüpft.
