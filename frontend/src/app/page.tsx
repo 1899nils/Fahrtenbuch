@@ -1,12 +1,13 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+'use client';
+
+import React, { useState, useEffect, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
 import { FixedSizeList as List } from 'react-window';
-import { motion, AnimatePresence } from 'framer-motion';
-import { Car, Calendar, Map as MapIcon, BarChart3, Clock, Navigation2, AlertTriangle, ShieldCheck } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { Calendar, Map as MapIcon, BarChart3, Clock, Navigation2, AlertTriangle } from 'lucide-react';
 import 'mapbox-gl/dist/mapbox-gl.css';
-import './App.css';
 
-// Mapbox Token (Dummy - Replace with real one if available)
+// Mapbox Token (Replace with real one)
 mapboxgl.accessToken = 'REPLACE_WITH_YOUR_MAPBOX_TOKEN';
 
 interface Waypoint {
@@ -46,11 +47,11 @@ const TripCard = ({ trip, isActive, onClick }: { trip: Trip, isActive: boolean, 
         <div>
           <h4 className="font-bold text-lg mb-1">{new Date(trip.start_time).toLocaleDateString('de-DE')}</h4>
           <p className="text-sm text-gray-400 flex items-center gap-1">
-            <Clock size={12} /> {new Date(trip.start_time).toLocaleTimeString('de-DE')} - {trip.end_time?.split('T')[1].substring(0,5)}
+            <Clock size={12} /> {new Date(trip.start_time).toLocaleTimeString('de-DE')}
           </p>
         </div>
         <div className={`text-xl font-black ${statusColor}`}>
-          {trip.distance} <span className="text-xs font-normal">km</span>
+          {trip.distance} <span className="text-xs font-normal text-white">km</span>
         </div>
       </div>
       <div className="mt-4 flex gap-3">
@@ -84,7 +85,6 @@ const MapView = ({ locations }: { locations?: Waypoint[] }) => {
     });
 
     map.current.on('load', () => {
-      // Create GeoJSON segments for gradient coloring
       const segments: any[] = [];
       for (let i = 0; i < locations.length - 1; i++) {
         segments.push({
@@ -119,14 +119,12 @@ const MapView = ({ locations }: { locations?: Waypoint[] }) => {
         }
       });
 
-      // Add Stop Markers
       locations.filter(l => l.stop).forEach(stop => {
         new mapboxgl.Marker({ color: '#FFD60A' })
           .setLngLat([stop.longitude, stop.latitude])
           .addTo(map.current!);
       });
 
-      // Fit bounds
       const bounds = new mapboxgl.LngLatBounds();
       locations.forEach(l => bounds.extend([l.longitude, l.latitude]));
       map.current?.fitBounds(bounds, { padding: 50 });
@@ -138,18 +136,22 @@ const MapView = ({ locations }: { locations?: Waypoint[] }) => {
   return <div ref={mapContainer} className="w-full h-full min-h-[400px]" />;
 };
 
-function App() {
+export default function Home() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [activeTab, setActiveTab] = useState('drive');
 
   useEffect(() => {
+    // URL anpassen für Monorepo (backend:3000 intern, via Proxy extern)
     fetch('/api/trips')
       .then(res => res.json())
       .then(data => {
-        setTrips(data);
-        if (data.length > 0) setSelectedTrip(data[0]);
-      });
+        if (Array.isArray(data)) {
+          setTrips(data);
+          if (data.length > 0) setSelectedTrip(data[0]);
+        }
+      })
+      .catch(err => console.error("Fetch error:", err));
   }, []);
 
   const Row = ({ index, style }: { index: number, style: React.CSSProperties }) => (
@@ -164,12 +166,11 @@ function App() {
 
   return (
     <div className="flex flex-col h-screen max-w-[1400px] mx-auto overflow-hidden relative">
-      {/* Sidebar Navigation (Desktop) */}
       <nav className="fixed left-6 top-1/2 -translate-y-1/2 flex-col gap-8 hidden lg:flex z-50">
         <div className="liquid-pane p-4 flex flex-col gap-6 items-center">
-          <button onClick={() => setActiveTab('drive')} className={`nav-icon-btn ${activeTab === 'drive' ? 'text-accent-blue drop-shadow-[0_0_10px_#0A84FF]' : 'text-gray-500'}`}><MapIcon size={24} /></button>
-          <button onClick={() => setActiveTab('history')} className={`nav-icon-btn ${activeTab === 'history' ? 'text-accent-blue drop-shadow-[0_0_10px_#0A84FF]' : 'text-gray-500'}`}><Calendar size={24} /></button>
-          <button onClick={() => setActiveTab('stats')} className={`nav-icon-btn ${activeTab === 'stats' ? 'text-accent-blue drop-shadow-[0_0_10px_#0A84FF]' : 'text-gray-500'}`}><BarChart3 size={24} /></button>
+          <button onClick={() => setActiveTab('drive')} className={`transition-all ${activeTab === 'drive' ? 'text-accent-blue drop-shadow-[0_0_10px_#0A84FF]' : 'text-gray-500'}`}><MapIcon size={24} /></button>
+          <button onClick={() => setActiveTab('history')} className={`transition-all ${activeTab === 'history' ? 'text-accent-blue drop-shadow-[0_0_10px_#0A84FF]' : 'text-gray-500'}`}><Calendar size={24} /></button>
+          <button onClick={() => setActiveTab('stats')} className={`transition-all ${activeTab === 'stats' ? 'text-accent-blue drop-shadow-[0_0_10px_#0A84FF]' : 'text-gray-500'}`}><BarChart3 size={24} /></button>
         </div>
       </nav>
 
@@ -188,7 +189,6 @@ function App() {
       </header>
 
       <main className="flex-1 grid grid-cols-1 lg:grid-cols-12 gap-6 p-6 overflow-hidden">
-        {/* Left Column: Timeline */}
         <div className="lg:col-span-4 flex flex-col overflow-hidden">
           <div className="flex justify-between items-center mb-4 px-2">
             <h3 className="text-sm font-black uppercase tracking-widest text-gray-500">Timeline</h3>
@@ -207,12 +207,9 @@ function App() {
           </div>
         </div>
 
-        {/* Right Column: Dynamic Content / Map */}
         <div className="lg:col-span-8 flex flex-col gap-6">
-          <div className="liquid-pane flex-1 relative overflow-hidden group">
+          <div className="liquid-pane flex-1 relative overflow-hidden">
             <MapView locations={selectedTrip?.locations} />
-            
-            {/* Overlay Trip Details */}
             <div className="absolute bottom-6 left-6 right-6 flex gap-4 pointer-events-none">
               <div className="liquid-pane p-4 flex-1 backdrop-blur-3xl bg-black/40 border-white/5">
                 <p className="text-[10px] text-gray-500 font-black uppercase mb-1">Current Focus</p>
@@ -222,13 +219,12 @@ function App() {
                     <p className="text-xs text-accent-blue flex items-center gap-1 font-bold mt-1 uppercase"><Navigation2 size={10} fill="currentColor" /> {selectedTrip?.type}</p>
                   </div>
                   <div className="text-right">
-                    <p className="text-xs font-bold text-gray-300 italic">"Trip to {selectedTrip?.purpose || 'Client Meeting'}"</p>
+                    <p className="text-xs font-bold text-gray-300 italic">"{selectedTrip?.purpose || 'Client Meeting'}"</p>
                   </div>
                 </div>
               </div>
             </div>
           </div>
-
           <div className="grid grid-cols-3 gap-4 h-32">
             <div className="liquid-pane p-4 flex flex-col justify-center items-center">
               <p className="text-[10px] text-gray-500 font-black uppercase">Efficiency</p>
@@ -238,7 +234,7 @@ function App() {
               <p className="text-[10px] text-gray-500 font-black uppercase">Fuel Saver</p>
               <h2 className="text-2xl font-black text-accent-blue">12.4 L</h2>
             </div>
-            <div className="liquid-pane p-4 flex flex-col justify-center items-center border-neon-magenta/20">
+            <div className="liquid-pane p-4 flex flex-col justify-center items-center">
               <p className="text-[10px] text-gray-500 font-black uppercase">Tax Saved</p>
               <h2 className="text-2xl font-black text-neon-magenta">412 €</h2>
             </div>
@@ -246,7 +242,6 @@ function App() {
         </div>
       </main>
 
-      {/* Mobile Tab Bar */}
       <nav className="lg:hidden liquid-pane mx-6 mb-6 h-16 flex justify-around items-center backdrop-blur-3xl bg-black/40">
         <button onClick={() => setActiveTab('drive')} className={activeTab === 'drive' ? 'text-accent-blue' : 'text-gray-500'}><MapIcon /></button>
         <button onClick={() => setActiveTab('history')} className={activeTab === 'history' ? 'text-accent-blue' : 'text-gray-500'}><Calendar /></button>
@@ -255,5 +250,3 @@ function App() {
     </div>
   );
 }
-
-export default App;
