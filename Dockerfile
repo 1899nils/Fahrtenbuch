@@ -16,14 +16,21 @@ COPY . .
 RUN npm run build
 
 # Production stage
-FROM nginx:alpine
+FROM node:22-alpine
 
-# Copy built files from build stage
-COPY --from=build /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Copy nginx configuration if needed (optional)
-# COPY nginx.conf /etc/nginx/conf.d/default.conf
+# Copy only what's needed to run the app
+COPY --from=build /app/dist ./dist
+COPY --from=build /app/server.js ./
+COPY --from=build /app/package*.json ./
 
-EXPOSE 80
+# Install only production dependencies
+RUN npm install --omit=dev
 
-CMD ["nginx", "-g", "daemon off;"]
+# Verzeichnis für Daten erstellen
+RUN mkdir -p /data
+
+EXPOSE 3000
+
+CMD ["npm", "start"]

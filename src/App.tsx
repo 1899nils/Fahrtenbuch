@@ -37,8 +37,28 @@ function App() {
   });
   const watchId = useRef<number | null>(null);
 
+  // Initiales Laden vom Backend
+  useEffect(() => {
+    fetch('/api/trips')
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data) && data.length > 0) {
+          setTrips(data);
+        }
+      })
+      .catch(err => console.error("Fehler beim Laden vom Server:", err));
+  }, []);
+
+  // Speichern im LocalStorage UND im Backend bei Änderungen
   useEffect(() => {
     localStorage.setItem('trips', JSON.stringify(trips));
+    
+    // Verzögertes Speichern im Backend (Debouncing wäre besser, aber hier reicht ein einfacher POST)
+    fetch('/api/trips', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(trips)
+    }).catch(err => console.error("Fehler beim Speichern auf dem Server:", err));
   }, [trips]);
 
   const startTracking = () => {
