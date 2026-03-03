@@ -1,0 +1,189 @@
+:root {
+  --glass-bg: rgba(255, 255, 255, 0.45);
+  --glass-border: rgba(255, 255, 255, 0.3);
+  --apple-blue: #007AFF;
+  --apple-green: #34C759;
+  --apple-red: #FF3B30;
+  --text-primary: #1D1D1F;
+  --text-secondary: #86868B;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: linear-gradient(135deg, #a1c4fd 0%, #c2e9fb 100%);
+  background-attachment: fixed;
+  min-height: 100vh;
+  color: var(--text-primary);
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  max-width: 500px;
+  margin: 0 auto;
+  padding: env(safe-area-inset-top) 20px 40px;
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+h1 {
+  font-weight: 700;
+  font-size: 2.2rem;
+  letter-spacing: -0.5px;
+  margin: 40px 0 10px;
+  text-align: left;
+}
+
+/* Liquid Glass Card Style */
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid var(--glass-border);
+  border-radius: 24px;
+  padding: 24px;
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.15);
+}
+
+.controls {
+  display: flex;
+  justify-content: center;
+  margin: 10px 0;
+}
+
+button {
+  font-family: inherit;
+  font-weight: 600;
+  border-radius: 16px;
+  border: none;
+  padding: 16px 32px;
+  font-size: 1.1rem;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  cursor: pointer;
+}
+
+button:active {
+  transform: scale(0.96);
+}
+
+.start-btn {
+  background: var(--apple-green);
+  color: white;
+  width: 100%;
+  box-shadow: 0 10px 20px rgba(52, 199, 89, 0.3);
+}
+
+.stop-btn {
+  background: var(--apple-red);
+  color: white;
+  width: 100%;
+  box-shadow: 0 10px 20px rgba(255, 59, 48, 0.3);
+}
+
+.current-stats {
+  text-align: center;
+  margin-top: -10px;
+}
+
+.current-stats p {
+  font-size: 1.2rem;
+  margin: 0;
+}
+
+.current-stats strong {
+  font-size: 2.5rem;
+  display: block;
+  margin-top: 5px;
+}
+
+.export-area button {
+  background: rgba(0, 0, 0, 0.05);
+  color: var(--apple-blue);
+  width: 100%;
+  border: 1px solid rgba(0, 122, 255, 0.2);
+}
+
+.trip-list h2 {
+  font-size: 1.5rem;
+  font-weight: 600;
+  margin-bottom: 16px;
+}
+
+.trip-item {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: 1px solid var(--glass-border);
+  border-radius: 20px;
+  padding: 16px;
+  margin-bottom: 16px;
+}
+
+.trip-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+
+.trip-info span:first-child {
+  display: block;
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.trip-info span:last-child {
+  color: var(--text-secondary);
+  font-size: 0.9rem;
+}
+
+.distance-badge {
+  background: var(--apple-blue);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+
+.trip-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+select {
+  flex: 1;
+  appearance: none;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid rgba(0, 0, 0, 0.1);
+  border-radius: 12px;
+  padding: 10px 16px;
+  font-family: inherit;
+  font-size: 0.95rem;
+  color: var(--text-primary);
+}
+
+.delete-btn {
+  background: transparent;
+  color: var(--apple-red);
+  padding: 8px 12px;
+  font-size: 0.9rem;
+  border: none;
+}
+
+.delete-btn:hover {
+  background: rgba(255, 59, 48, 0.1);
+}
+
+ul {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
