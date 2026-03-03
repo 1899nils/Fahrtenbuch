@@ -23,7 +23,8 @@
   .trip-business { @apply border-[rgba(50,215,75,0.25)] bg-gradient-to-br from-[rgba(50,215,75,0.15)] to-transparent; }
 
   .bouncy-hover {
-    @apply transition-all duration-300 cubic-bezier(0.34, 1.56, 0.64, 1) hover:scale-[1.02] active:scale-[0.98];
+    @apply transition-all duration-300 hover:scale-[1.02] active:scale-[0.98];
+    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
   }
 }
 
