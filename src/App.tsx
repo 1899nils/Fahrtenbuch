@@ -1,202 +1,265 @@
 import { useState, useEffect, useRef } from 'react';
+import { MapContainer, TileLayer, Polyline, Marker, useMap } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import L from 'leaflet';
 import './App.css';
+
+// Fix für Leaflet Icons in React
+import icon from 'leaflet/dist/images/marker-icon.png';
+import iconShadow from 'leaflet/dist/images/marker-shadow.png';
+
+let DefaultIcon = L.icon({
+  iconUrl: icon,
+  shadowUrl: iconShadow,
+  iconSize: [25, 41],
+  iconAnchor: [12, 41]
+});
+L.Marker.prototype.options.icon = DefaultIcon;
 
 interface Location {
   latitude: number;
   longitude: number;
   timestamp: number;
+  speed?: number | null;
+}
+
+interface Stoppage {
+  type: 'Stau' | 'Tanken/Halt';
+  startTime: number;
+  endTime?: number;
+  latitude: number;
+  longitude: number;
 }
 
 interface Trip {
   id: string;
   startTime: string;
   endTime?: string;
-  distance: number; // in km
+  distance: number;
   type: 'Dienstlich' | 'Privat';
   locations: Location[];
+  stoppages: Stoppage[];
 }
+
+type View = 'dashboard' | 'history' | 'stats';
 
 function calculateDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
   const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = 
-    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
+  const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
     Math.sin(dLon / 2) * Math.sin(dLon / 2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  return R * c;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// Komponente um die Karte zu zentrieren
+function ChangeView({ center }: { center: [number, number] }) {
+  const map = useMap();
+  map.setView(center);
+  return null;
 }
 
 function App() {
+  const [activeView, setActiveView] = useState<View>('dashboard');
   const [isTracking, setIsTracking] = useState(false);
   const [currentTrip, setCurrentTrip] = useState<Trip | null>(null);
-  const [trips, setTrips] = useState<Trip[]>(() => {
-    const saved = localStorage.getItem('trips');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [trips, setTrips] = useState<Trip[]>([]);
   const watchId = useRef<number | null>(null);
+  const lastActivityTime = useRef<number>(Date.now());
 
-  // Initiales Laden vom Backend
+  // Daten vom Backend laden
   useEffect(() => {
     fetch('/api/trips')
       .then(res => res.json())
-      .then(data => {
-        if (Array.isArray(data) && data.length > 0) {
-          setTrips(data);
-        }
-      })
-      .catch(err => console.error("Fehler beim Laden vom Server:", err));
+      .then(data => { if (Array.isArray(data)) setTrips(data); })
+      .catch(err => console.error("Sync Error:", err));
   }, []);
 
-  // Speichern im LocalStorage UND im Backend bei Änderungen
+  // Daten zum Backend synchronisieren
   useEffect(() => {
-    localStorage.setItem('trips', JSON.stringify(trips));
-    
-    // Verzögertes Speichern im Backend (Debouncing wäre besser, aber hier reicht ein einfacher POST)
-    fetch('/api/trips', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(trips)
-    }).catch(err => console.error("Fehler beim Speichern auf dem Server:", err));
+    if (trips.length > 0) {
+      fetch('/api/trips', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(trips)
+      }).catch(err => console.error("Save Error:", err));
+    }
   }, [trips]);
 
   const startTracking = () => {
-    if (!navigator.geolocation) {
-      alert("Geolocation wird von deinem Browser nicht unterstützt.");
-      return;
-    }
-
     const newTrip: Trip = {
       id: Date.now().toString(),
-      startTime: new Date().toLocaleString([], { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' }),
+      startTime: new Date().toLocaleString(),
       distance: 0,
       type: 'Privat',
-      locations: []
+      locations: [],
+      stoppages: []
     };
-
     setCurrentTrip(newTrip);
     setIsTracking(true);
+    lastActivityTime.current = Date.now();
 
     watchId.current = navigator.geolocation.watchPosition(
-      (position) => {
-        const { latitude, longitude } = position.coords;
-        const newLocation = { latitude, longitude, timestamp: position.timestamp };
+      (pos) => {
+        const { latitude, longitude, speed } = pos.coords;
+        const newLoc = { latitude, longitude, timestamp: pos.timestamp, speed };
 
         setCurrentTrip(prev => {
           if (!prev) return null;
-          const updatedLocations = [...prev.locations, newLocation];
-          let newDistance = prev.distance;
+          const locations = [...prev.locations, newLoc];
+          let distance = prev.distance;
+          let stoppages = [...prev.stoppages];
 
           if (prev.locations.length > 0) {
-            const lastLoc = prev.locations[prev.locations.length - 1];
-            newDistance += calculateDistance(
-              lastLoc.latitude, lastLoc.longitude,
-              latitude, longitude
-            );
+            const last = prev.locations[prev.locations.length - 1];
+            const d = calculateDistance(last.latitude, last.longitude, latitude, longitude);
+            distance += d;
+
+            // Stopp-Erkennung (Einfache Logik: Wenn Speed < 1km/h für > 2 Min)
+            const isMoving = speed && speed > 0.5; // ca 1.8 km/h
+            if (!isMoving) {
+              const idleTime = Date.now() - lastActivityTime.current;
+              if (idleTime > 120000) { // 2 Minuten Stillstand
+                const type = distance > 0.1 ? 'Stau' : 'Tanken/Halt';
+                const lastStop = stoppages[stoppages.length - 1];
+                
+                if (!lastStop || lastStop.endTime) {
+                  stoppages.push({
+                    type,
+                    startTime: lastActivityTime.current,
+                    latitude,
+                    longitude
+                  });
+                }
+              }
+            } else {
+              lastActivityTime.current = Date.now();
+              // Letzten Stopp beenden falls vorhanden
+              if (stoppages.length > 0 && !stoppages[stoppages.length - 1].endTime) {
+                stoppages[stoppages.length - 1].endTime = Date.now();
+              }
+            }
           }
 
-          return { ...prev, locations: updatedLocations, distance: newDistance };
+          return { ...prev, locations, distance, stoppages };
         });
       },
-      (error) => console.error(error),
+      (err) => console.error(err),
       { enableHighAccuracy: true }
     );
   };
 
   const stopTracking = () => {
-    if (watchId.current !== null) {
-      navigator.geolocation.clearWatch(watchId.current);
-      watchId.current = null;
-    }
-
+    if (watchId.current) navigator.geolocation.clearWatch(watchId.current);
     if (currentTrip) {
-      const finalTrip = { ...currentTrip, endTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) };
+      const finalTrip = { ...currentTrip, endTime: new Date().toLocaleTimeString() };
       setTrips([finalTrip, ...trips]);
       setCurrentTrip(null);
     }
     setIsTracking(false);
   };
 
-  const updateTripType = (id: string, type: 'Dienstlich' | 'Privat') => {
-    setTrips(trips.map(t => t.id === id ? { ...t, type } : t));
-  };
-
-  const deleteTrip = (id: string) => {
-    setTrips(trips.filter(t => t.id !== id));
-  };
-
-  const exportCSV = () => {
-    const header = "Start;Ende;Distanz (km);Typ\n";
-    const csvContent = trips.map(t => 
-      `${t.startTime};${t.endTime || ''};${t.distance.toFixed(2).replace('.', ',')};${t.type}`
-    ).join('\n');
-    
-    const blob = new Blob([header + csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement("a");
-    link.setAttribute("href", url);
-    link.setAttribute("download", `fahrtenbuch_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-  };
+  const polylinePositions = currentTrip?.locations.map(l => [l.latitude, l.longitude] as [number, number]) || [];
+  const mapCenter = polylinePositions.length > 0 ? polylinePositions[polylinePositions.length - 1] : [51.1657, 10.4515] as [number, number];
 
   return (
-    <div className="container">
-      <h1>Fahrtenbuch</h1>
-      
-      <div className="glass-card">
-        <div className="controls">
-          {!isTracking ? (
-            <button className="start-btn" onClick={startTracking}>Fahrt starten</button>
-          ) : (
-            <button className="stop-btn" onClick={stopTracking}>Fahrt beenden</button>
-          )}
-        </div>
+    <div className="app-container">
+      <header className="header">
+        <h2>Fahrtenbuch PRO</h2>
+        {isTracking && <span className="badge badge-dienstlich" style={{animation: 'pulse 2s infinite'}}>Rec ●</span>}
+      </header>
 
-        {isTracking && currentTrip && (
-          <div className="current-stats">
-            <p>Aktuelle Distanz</p>
-            <strong>{currentTrip.distance.toFixed(2)} km</strong>
+      <main className="main-content">
+        {activeView === 'dashboard' && (
+          <div className="view-fade">
+            <div className="glass-card">
+              <h3>{isTracking ? 'Aktuelle Fahrt' : 'Bereit für die Fahrt?'}</h3>
+              <div className="map-wrapper">
+                <MapContainer center={mapCenter} zoom={15} scrollWheelZoom={false}>
+                  <TileLayer url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+                  {polylinePositions.length > 0 && <Polyline positions={polylinePositions} color="blue" />}
+                  <ChangeView center={mapCenter} />
+                </MapContainer>
+              </div>
+              
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem'}}>
+                <div>
+                  <p style={{color: 'var(--text-secondary)', fontSize: '0.8rem'}}>Distanz</p>
+                  <strong style={{fontSize: '1.5rem'}}>{currentTrip?.distance.toFixed(2) || '0.00'} km</strong>
+                </div>
+                {isTracking && (
+                  <div>
+                    <p style={{color: 'var(--text-secondary)', fontSize: '0.8rem'}}>Stopps</p>
+                    <strong>{currentTrip?.stoppages.length || 0}</strong>
+                  </div>
+                )}
+              </div>
+
+              {!isTracking ? (
+                <button className="primary-btn" style={{width: '100%'}} onClick={startTracking}>Neue Fahrt starten</button>
+              ) : (
+                <button className="stop-btn" style={{width: '100%'}} onClick={stopTracking}>Fahrt beenden</button>
+              )}
+            </div>
+
+            {currentTrip?.stoppages.map((s, i) => (
+              <div key={i} className="stoppage-info">
+                ⚠️ {s.type} erkannt um {new Date(s.startTime).toLocaleTimeString()}
+              </div>
+            ))}
           </div>
         )}
-      </div>
 
-      <div className="export-area">
-        <button onClick={exportCSV} disabled={trips.length === 0}>Exportieren als CSV</button>
-      </div>
-
-      <div className="trip-list">
-        <h2>Verlauf</h2>
-        {trips.length === 0 ? <p style={{textAlign: 'center', color: 'var(--text-secondary)'}}>Noch keine Fahrten aufgezeichnet.</p> : (
-          <ul>
-            {trips.map(trip => (
-              <li key={trip.id} className="trip-item">
-                <div className="trip-header">
-                  <div className="trip-info">
-                    <span>{trip.startTime}</span>
-                    <span>Ende: {trip.endTime}</span>
-                  </div>
-                  <div className="distance-badge">
-                    {trip.distance.toFixed(2)} km
-                  </div>
-                </div>
-                <div className="trip-actions">
-                  <select 
-                    value={trip.type} 
-                    onChange={(e) => updateTripType(trip.id, e.target.value as any)}
-                  >
-                    <option value="Privat">Privat</option>
-                    <option value="Dienstlich">Dienstlich</option>
-                  </select>
-                  <button className="delete-btn" onClick={() => deleteTrip(trip.id)}>Löschen</button>
-                </div>
-              </li>
-            ))}
-          </ul>
+        {activeView === 'history' && (
+          <div className="view-fade">
+            <h3>Letzte Fahrten</h3>
+            <br />
+            {trips.length === 0 ? <p>Keine Fahrten vorhanden.</p> : (
+              <ul>
+                {trips.map(t => (
+                  <li key={t.id} className="trip-item">
+                    <div className="trip-info">
+                      <h4>{t.startTime.split(',')[0]}</h4>
+                      <p>{t.startTime.split(',')[1]} - {t.endTime}</p>
+                      {t.stoppages.length > 0 && <span style={{fontSize: '0.7rem', color: 'var(--warning)'}}>• {t.stoppages.length} Stopps</span>}
+                    </div>
+                    <div style={{textAlign: 'right'}}>
+                      <div style={{fontWeight: 'bold'}}>{t.distance.toFixed(2)} km</div>
+                      <span className={`badge ${t.type === 'Dienstlich' ? 'badge-dienstlich' : 'badge-privat'}`}>{t.type}</span>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
         )}
-      </div>
+
+        {activeView === 'stats' && (
+          <div className="view-fade">
+            <h3>Statistik</h3>
+            <div className="glass-card" style={{marginTop: '1rem'}}>
+              <p>Gesamtdistanz</p>
+              <h2>{trips.reduce((acc, t) => acc + t.distance, 0).toFixed(1)} km</h2>
+            </div>
+          </div>
+        )}
+      </main>
+
+      <nav className="bottom-nav">
+        <div className={`nav-item ${activeView === 'dashboard' ? 'active' : ''}`} onClick={() => setActiveView('dashboard')}>
+          <span className="nav-icon">🚗</span>
+          <span>Fahrt</span>
+        </div>
+        <div className={`nav-item ${activeView === 'history' ? 'active' : ''}`} onClick={() => setActiveView('history')}>
+          <span className="nav-icon">📅</span>
+          <span>Verlauf</span>
+        </div>
+        <div className={`nav-item ${activeView === 'stats' ? 'active' : ''}`} onClick={() => setActiveView('stats')}>
+          <span className="nav-icon">📊</span>
+          <span>Statistik</span>
+        </div>
+      </nav>
     </div>
   );
 }
