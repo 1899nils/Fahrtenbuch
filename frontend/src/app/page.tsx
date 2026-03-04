@@ -60,30 +60,52 @@ const MapView = ({ locations }: { locations?: Waypoint[] }) => {
   useEffect(() => {
     if (!map.current || !locations || locations.length < 2) return;
 
-    const segments = locations.map(l => [l.longitude, l.latitude]);
+    // Segmente erstellen für Stau-Analyse (Traffic)
+    const features = [];
+    for (let i = 0; i < locations.length - 1; i++) {
+      features.push({
+        type: 'Feature',
+        properties: {
+          isTraffic: locations[i + 1].traffic || false
+        },
+        geometry: {
+          type: 'LineString',
+          coordinates: [
+            [locations[i].longitude, locations[i].latitude],
+            [locations[i + 1].longitude, locations[i + 1].latitude]
+          ]
+        }
+      });
+    }
+
+    const geojsonData = {
+      type: 'FeatureCollection',
+      features: features
+    };
     
     if (map.current.getSource('route')) {
-      (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData({
-        type: 'Feature',
-        geometry: { type: 'LineString', coordinates: segments }
-      } as any);
+      (map.current.getSource('route') as mapboxgl.GeoJSONSource).setData(geojsonData as any);
     } else {
       map.current.addSource('route', {
         type: 'geojson',
-        data: { type: 'Feature', geometry: { type: 'LineString', coordinates: segments } }
+        data: geojsonData as any
       });
       map.current.addLayer({
         id: 'route-line',
         type: 'line',
         source: 'route',
         layout: { 'line-join': 'round', 'line-cap': 'round' },
-        paint: { 'line-color': '#0A84FF', 'line-width': 5 }
+        paint: { 
+          'line-color': ['case', ['get', 'isTraffic'], '#FF375F', '#0A84FF'],
+          'line-width': 6,
+          'line-blur': 0.5
+        }
       });
     }
 
     const bounds = new mapboxgl.LngLatBounds();
     locations.forEach(l => bounds.extend([l.longitude, l.latitude]));
-    map.current.fitBounds(bounds, { padding: 50, duration: 1000 });
+    map.current.fitBounds(bounds, { padding: 80, duration: 1500 });
   }, [locations]);
 
   return <div ref={mapContainer} className="w-full h-full min-h-[400px]" />;
