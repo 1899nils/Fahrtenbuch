@@ -3,38 +3,46 @@
 @tailwind utilities;
 
 :root {
-  --bg-dark: #000000;
-  --glass-bg: rgba(30, 30, 32, 0.7);
-  --glass-border: rgba(255, 255, 255, 0.08);
+  --bg-color: #050505;
+  --text-color: #ffffff;
+  --glass-bg: rgba(255, 255, 255, 0.05);
+  --glass-border: rgba(255, 255, 255, 0.1);
   --accent-blue: #0A84FF;
   --neon-green: #32D74B;
-  --neon-magenta: #FF375F;
+}
+
+[data-theme='light'] {
+  --bg-color: #f5f5f7;
+  --text-color: #1d1d1f;
+  --glass-bg: rgba(0, 0, 0, 0.03);
+  --glass-border: rgba(0, 0, 0, 0.08);
 }
 
 @layer components {
-  .liquid-pane {
-    @apply bg-[rgba(28,28,30,0.65)] backdrop-blur-[35px] border border-[rgba(255,255,255,0.08)] 
-           rounded-[32px] shadow-[0_20px_40px_rgba(0,0,0,0.4)];
-    box-shadow: inset 0 1px 1px rgba(255,255,255,0.1), 0 20px 40px rgba(0,0,0,0.4);
+  .glass-card {
+    @apply backdrop-blur-lg border transition-all duration-300;
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
   }
 
-  .trip-unclassified { @apply border-[rgba(255,55,95,0.3)] bg-gradient-to-br from-[rgba(255,55,95,0.15)] to-transparent; }
-  .trip-classified { @apply border-[rgba(10,132,255,0.25)] bg-gradient-to-br from-[rgba(10,132,255,0.15)] to-transparent; }
-  .trip-business { @apply border-[rgba(50,215,75,0.25)] bg-gradient-to-br from-[rgba(50,215,75,0.15)] to-transparent; }
+  .liquid-glass {
+    @apply backdrop-blur-2xl border shadow-2xl rounded-[2rem];
+    background: var(--glass-bg);
+    border-color: var(--glass-border);
+  }
 
-  .bouncy-hover {
-    @apply transition-all duration-300 hover:scale-[1.02] active:scale-[0.98];
-    transition-timing-function: cubic-bezier(0.34, 1.56, 0.64, 1);
+  .glow-dot {
+    @apply w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(currentColor)];
   }
 }
 
 body {
-  @apply bg-[#000000] text-white min-h-screen antialiased overflow-hidden;
-  background: radial-gradient(circle at 50% 0%, rgba(10, 132, 255, 0.15) 0%, transparent 60%),
-              radial-gradient(circle at 100% 100%, rgba(255, 55, 95, 0.1) 0%, transparent 40%);
+  background-color: var(--bg-color);
+  color: var(--text-color);
+  @apply transition-colors duration-500 antialiased overflow-hidden;
 }
 
-.custom-scrollbar::-webkit-scrollbar { width: 4px; }
+.custom-scrollbar::-webkit-scrollbar { width: 5px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full; }
 
-.mapboxgl-map { @apply rounded-[28px] overflow-hidden !important; }
+.mapboxgl-map { @apply rounded-3xl overflow-hidden !important; }
