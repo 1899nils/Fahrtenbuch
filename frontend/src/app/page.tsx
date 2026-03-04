@@ -93,6 +93,15 @@ export default function App() {
   const [trips, setTrips] = useState<Trip[]>([]);
   const [selectedTrip, setSelectedTrip] = useState<Trip | null>(null);
   const [theme, setTheme] = useState<'dark' | 'light'>('dark');
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newTrip, setNewTrip] = useState({
+    start_address: '',
+    end_address: '',
+    date: '',
+    time: '',
+    mileage: '',
+    type: 'business'
+  });
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
@@ -129,6 +138,14 @@ export default function App() {
             {theme === 'dark' ? <Sun size={20} /> : <Moon size={20} />}
           </button>
         </div>
+
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="w-full h-16 liquid-glass flex items-center justify-center gap-3 font-bold text-accent-blue hover:text-white hover:bg-accent-blue/20 transition-all border-dashed border-2 border-accent-blue/30"
+        >
+          <div className="w-8 h-8 rounded-full bg-accent-blue/10 flex items-center justify-center text-xl">+</div>
+          Neue Fahrt eintragen
+        </button>
 
         <div className="liquid-glass flex-1 overflow-hidden flex flex-col p-2">
           <div className="p-4 mb-2">
@@ -242,6 +259,112 @@ export default function App() {
           </div>
         )}
       </main>
+
+      {/* Modal: Neue Fahrt */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-black/40 backdrop-blur-md"
+            />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="liquid-glass w-full max-w-xl relative overflow-hidden flex flex-col p-0 shadow-[0_0_50px_rgba(0,0,0,0.5)] border-white/20"
+            >
+              <div className="p-8 border-b border-white/5 flex justify-between items-center">
+                <h2 className="text-2xl font-bold">Neue Fahrt erfassen</h2>
+                <button onClick={() => setIsModalOpen(false)} className="p-2 hover:bg-white/5 rounded-xl transition-all">
+                  <X size={24} />
+                </button>
+              </div>
+
+              <div className="p-8 flex flex-col gap-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Startadresse</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ort, Straße..." 
+                      className="glass-card bg-white/5 px-4 py-3 rounded-2xl outline-none focus:border-accent-blue/50"
+                      value={newTrip.start_address}
+                      onChange={e => setNewTrip({...newTrip, start_address: e.target.value})}
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Zieladresse</label>
+                    <input 
+                      type="text" 
+                      placeholder="Ort, Straße..." 
+                      className="glass-card bg-white/5 px-4 py-3 rounded-2xl outline-none focus:border-accent-blue/50"
+                      value={newTrip.end_address}
+                      onChange={e => setNewTrip({...newTrip, end_address: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Datum & Uhrzeit</label>
+                    <div className="flex gap-2">
+                      <input 
+                        type="date" 
+                        className="glass-card bg-white/5 px-4 py-3 rounded-2xl outline-none focus:border-accent-blue/50 flex-1 text-sm [color-scheme:dark]"
+                        value={newTrip.date}
+                        onChange={e => setNewTrip({...newTrip, date: e.target.value})}
+                      />
+                      <input 
+                        type="time" 
+                        className="glass-card bg-white/5 px-4 py-3 rounded-2xl outline-none focus:border-accent-blue/50 w-24 text-sm [color-scheme:dark]"
+                        value={newTrip.time}
+                        onChange={e => setNewTrip({...newTrip, time: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Kilometerstand (km)</label>
+                    <input 
+                      type="number" 
+                      placeholder="z.B. 12450" 
+                      className="glass-card bg-white/5 px-4 py-3 rounded-2xl outline-none focus:border-accent-blue/50"
+                      value={newTrip.mileage}
+                      onChange={e => setNewTrip({...newTrip, mileage: e.target.value})}
+                    />
+                  </div>
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="text-[10px] font-bold text-gray-500 uppercase tracking-widest ml-1">Fahrttyp</label>
+                  <div className="flex p-1.5 bg-white/5 rounded-2xl border border-white/5">
+                    {['business', 'private'].map((type) => (
+                      <button
+                        key={type}
+                        onClick={() => setNewTrip({...newTrip, type: type as any})}
+                        className={`flex-1 py-3 rounded-xl font-bold text-sm transition-all ${newTrip.type === type ? 'bg-accent-blue text-white shadow-lg' : 'text-gray-500 hover:text-white'}`}
+                      >
+                        {type === 'business' ? 'Dienstlich' : 'Privat'}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <button 
+                  onClick={() => setIsModalOpen(false)}
+                  className="w-full bg-accent-blue hover:bg-blue-600 text-white font-bold py-4 rounded-2xl mt-4 transition-all shadow-xl shadow-accent-blue/20 flex items-center justify-center gap-2"
+                >
+                  <Save size={18} />
+                  Fahrt hinzufügen
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
