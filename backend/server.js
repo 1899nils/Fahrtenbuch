@@ -77,6 +77,14 @@ app.use(express.static(frontendPath));
 
 // --- API ENDPOINTS ---
 
+// Config endpoint to get API keys from Docker Environment
+app.get('/api/config', (req, res) => {
+  res.json({
+    google_maps_api_key: process.env.GOOGLE_MAPS_API_KEY || '',
+    mapbox_access_token: process.env.MAPBOX_ACCESS_TOKEN || ''
+  });
+});
+
 app.get('/api/trips', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM trips ORDER BY start_time DESC');

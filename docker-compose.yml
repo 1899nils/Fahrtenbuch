@@ -7,6 +7,8 @@ services:
     environment:
       - DATABASE_URL=postgres://user:password@fahrtenbuch-db:5432/fahrtenbuch
       - PORT=3000
+      - GOOGLE_MAPS_API_KEY=DEIN_GOOGLE_KEY
+      - MAPBOX_ACCESS_TOKEN=DEIN_MAPBOX_TOKEN
     ports:
       - "3001:3000"
     volumes:
