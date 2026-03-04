@@ -29,29 +29,49 @@ const PORT = process.env.PORT || 3000;
 
 // --- DATABASE SETUP ---
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://user:password@db:5432/fahrtenbuch'
+  connectionString: process.env.DATABASE_URL || 'postgres://user:password@fahrtenbuch-db:5432/fahrtenbuch'
 });
 
-// Test database connection on startup
-pool.connect((err, client, release) => {
-  if (err) {
-    logger(`DATABASE ERROR: Could not connect to database: ${err.stack}`);
-  } else {
-    logger('DATABASE SUCCESS: Connected to database');
-    release();
+async function initializeDatabase() {
+  const initSqlPath = path.join(__dirname, 'init.sql');
+  if (fs.existsSync(initSqlPath)) {
+    try {
+      const sql = fs.readFileSync(initSqlPath, 'utf8');
+      await pool.query(sql);
+      logger('DATABASE SUCCESS: Tables initialized/checked');
+    } catch (err) {
+      logger(`DATABASE INIT ERROR: ${err.message}`);
+    }
   }
-});
+}
+
+async function connectWithRetry() {
+  let retries = 5;
+  while (retries > 0) {
+    try {
+      const client = await pool.connect();
+      logger('DATABASE SUCCESS: Connected to database');
+      client.release();
+      await initializeDatabase();
+      break;
+    } catch (err) {
+      retries -= 1;
+      logger(`DATABASE ERROR: Connection failed. Retrying... (${retries} left). Error: ${err.message}`);
+      await new Promise(res => setTimeout(res, 5000));
+    }
+  }
+}
+
+connectWithRetry();
 
 app.use(cors());
 app.use(express.json({ limit: '100mb' }));
 
-// Middleware to log all requests
 app.use((req, res, next) => {
   logger(`${req.method} ${req.url}`);
   next();
 });
 
-// Static files (Built Frontend)
 const frontendPath = path.join(__dirname, '../frontend/out');
 app.use(express.static(frontendPath));
 
@@ -105,14 +125,13 @@ app.post('/api/waypoints', async (req, res) => {
   }
 });
 
-// Helper functions
 function getDistance(lat1, lon1, lat2, lon2) {
   const R = 6371000;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
             Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * 
-            料理.sin(dLon/2) * Math.sin(dLon/2);
+            Math.sin(dLon/2) * Math.sin(dLon/2);
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
 }
 
@@ -120,7 +139,6 @@ async function analyzeWaypoints(points) {
   return points.map(p => ({ ...p, stop: false, traffic: false }));
 }
 
-// Catch-all route
 app.get('*', (req, res) => {
   if (!req.path.startsWith('/api')) {
     res.sendFile(path.join(frontendPath, 'index.html'));
