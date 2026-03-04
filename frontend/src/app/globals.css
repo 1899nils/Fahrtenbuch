@@ -26,7 +26,7 @@
   }
 
   .liquid-glass {
-    @apply backdrop-blur-2xl border shadow-2xl rounded-[2rem];
+    @apply backdrop-blur-2xl border shadow-2xl transition-all duration-500;
     background: var(--glass-bg);
     border-color: var(--glass-border);
   }
@@ -34,15 +34,29 @@
   .glow-dot {
     @apply w-2.5 h-2.5 rounded-full shadow-[0_0_10px_rgba(currentColor)];
   }
+
+  /* Mobile Optimierungen */
+  .mobile-bottom-sheet {
+    @apply fixed bottom-0 left-0 right-0 z-40 rounded-t-[2.5rem] border-t border-white/10 flex flex-col transition-all duration-500 ease-in-out;
+    background: rgba(15, 15, 15, 0.85);
+    backdrop-filter: blur(25px) saturate(180%);
+  }
 }
 
 body {
   background-color: var(--bg-color);
   color: var(--text-color);
-  @apply transition-colors duration-500 antialiased overflow-hidden;
+  @apply transition-colors duration-500 antialiased overflow-hidden select-none;
 }
 
-.custom-scrollbar::-webkit-scrollbar { width: 5px; }
+.custom-scrollbar::-webkit-scrollbar { width: 4px; }
 .custom-scrollbar::-webkit-scrollbar-thumb { @apply bg-white/10 rounded-full; }
 
-.mapboxgl-map { @apply rounded-3xl overflow-hidden !important; }
+.mapboxgl-map { @apply transition-all duration-500 !important; }
+
+/* Safe Area für iPhones */
+@supports (padding: env(safe-area-inset-bottom)) {
+  .mobile-bottom-sheet {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
