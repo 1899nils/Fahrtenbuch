@@ -10,6 +10,9 @@ RUN npm run build
 FROM node:22-alpine
 WORKDIR /app
 
+# Create data directory and set permissions
+RUN mkdir -p /data/logs && chmod -R 777 /data
+
 # Copy backend files
 COPY backend/package*.json ./backend/
 RUN cd backend && npm install --omit=dev
