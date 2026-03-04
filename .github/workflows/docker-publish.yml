@@ -7,7 +7,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  REPO_NAME: ${{ github.repository }}
+  # Wir erzwingen Kleinschreibung für den Repository-Namen
+  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
   build-and-push:
@@ -27,12 +28,16 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repo name
+        run: |
+          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
+
       # Build and Push Backend
       - name: Extract backend metadata
         id: meta-backend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}-backend
+          images: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}-backend
           tags: |
             type=raw,value=latest
             type=sha,format=short
@@ -50,7 +55,7 @@ jobs:
         id: meta-frontend
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_NAME }}-frontend
+          images: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}-frontend
           tags: |
             type=raw,value=latest
             type=sha,format=short
