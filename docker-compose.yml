@@ -1,30 +1,22 @@
 services:
-  # 1. Backend (Node.js/Express)
-  backend:
-    build: ./backend
-    container_name: fahrtenbuch-backend
+  # Unified App (Backend + Frontend)
+  app:
+    image: ghcr.io/1899nils/fahrtenbuch:latest
+    container_name: fahrtenbuch-app
     restart: unless-stopped
     environment:
       - DATABASE_URL=postgres://user:password@db:5432/fahrtenbuch
       - PORT=3000
-    networks:
-      - internal-net
-    depends_on:
-      db:
-        condition: service_healthy
-
-  # 2. Frontend (Next.js)
-  frontend:
-    build: ./frontend
-    container_name: fahrtenbuch-frontend
-    restart: unless-stopped
     ports:
       - "3001:3000"
     networks:
       - internal-net
       - proxy-net
+    depends_on:
+      db:
+        condition: service_healthy
 
-  # 3. Database (PostgreSQL)
+  # Database (PostgreSQL)
   db:
     image: postgres:16-alpine
     container_name: fahrtenbuch-db
@@ -43,7 +35,7 @@ services:
       timeout: 5s
       retries: 5
 
-  # 4. Reverse Proxy (Nginx Proxy Manager)
+  # Reverse Proxy (Nginx Proxy Manager)
   npm:
     image: 'jc21/nginx-proxy-manager:latest'
     container_name: fahrtenbuch-proxy

@@ -1,8 +1,12 @@
 node_modules
-dist
+**/node_modules
+.next
+out
 .git
-.gitignore
-README.md
-Dockerfile
+.github
+*.md
 docker-compose.yml
+Dockerfile
 .dockerignore
+frontend/node_modules
+backend/node_modules

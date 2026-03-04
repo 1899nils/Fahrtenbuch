@@ -1,4 +1,4 @@
-name: Docker Build and Push
+name: Docker Build and Push (Unified)
 
 on:
   push:
@@ -7,8 +7,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  # Wir erzwingen Kleinschreibung für den Repository-Namen
-  IMAGE_NAME: ${{ github.repository }}
+  # Hardcoded name based on user request: ghcr.io/1899nils/fahrtenbuch
+  IMAGE_NAME: 1899nils/fahrtenbuch
 
 jobs:
   build-and-push:
@@ -28,42 +28,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Lowercase repo name
-        run: |
-          echo "REPO_LOWER=${GITHUB_REPOSITORY,,}" >> $GITHUB_ENV
-
-      # Build and Push Backend
-      - name: Extract backend metadata
-        id: meta-backend
+      # Build and Push Unified Image
+      - name: Extract metadata
+        id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}-backend
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest
             type=sha,format=short
 
-      - name: Build and push Backend
+      - name: Build and push Unified App
         uses: docker/build-push-action@v5
         with:
-          context: ./backend
+          context: .
+          file: ./Dockerfile
           push: true
-          tags: ${{ steps.meta-backend.outputs.tags }}
-          labels: ${{ steps.meta-backend.outputs.labels }}
-
-      # Build and Push Frontend
-      - name: Extract frontend metadata
-        id: meta-frontend
-        uses: docker/metadata-action@v5
-        with:
-          images: ${{ env.REGISTRY }}/${{ env.REPO_LOWER }}-frontend
-          tags: |
-            type=raw,value=latest
-            type=sha,format=short
-
-      - name: Build and push Frontend
-        uses: docker/build-push-action@v5
-        with:
-          context: ./frontend
-          push: true
-          tags: ${{ steps.meta-frontend.outputs.tags }}
-          labels: ${{ steps.meta-frontend.outputs.labels }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}

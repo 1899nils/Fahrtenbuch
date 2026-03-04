@@ -1,36 +1,28 @@
-# Build stage
-FROM node:22-alpine AS build
-
-WORKDIR /app
-
-# Copy package.json and package-lock.json
-COPY package*.json ./
-
-# Install dependencies
-RUN npm install
-
-# Copy project files
-COPY . .
-
-# Build the project
+# Stage 1: Build Frontend
+FROM node:22-alpine AS frontend-builder
+WORKDIR /app/frontend
+COPY frontend/package*.json ./
+RUN npm install --legacy-peer-deps
+COPY frontend/ ./
 RUN npm run build
 
-# Production stage
+# Stage 2: Build Backend & Final Image
 FROM node:22-alpine
-
 WORKDIR /app
 
-# Copy only what's needed to run the app
-COPY --from=build /app/dist ./dist
-COPY --from=build /app/server.js ./
-COPY --from=build /app/package*.json ./
+# Copy backend files
+COPY backend/package*.json ./backend/
+RUN cd backend && npm install --omit=dev
 
-# Install only production dependencies
-RUN npm install --omit=dev
+COPY backend/ ./backend/
 
-# Verzeichnis für Daten erstellen
-RUN mkdir -p /data
+# Copy built frontend from Stage 1
+COPY --from=frontend-builder /app/frontend/out ./frontend/out
+
+# Copy root package.json for the start script
+COPY package*.json ./
 
 EXPOSE 3000
+ENV NODE_ENV=production
 
 CMD ["npm", "start"]
